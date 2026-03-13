@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF 分析工具 (桌面版)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>PDF 分析工具</h1>
+
+        <div class="date-range-selector">
+            <h2>指定下載判決書日期 (民國年)</h2>
+            <div class="date-inputs">
+                <div class="date-group">
+                    <label>從:</label>
+                    <input type="text" id="start_year" placeholder="年" value="114">
+                    <span>年</span>
+                    <input type="text" id="start_month" placeholder="月" value="01">
+                    <span>月</span>
+                    <input type="text" id="start_day" placeholder="日" value="01">
+                    <span>日</span>
+                </div>
+                <div class="date-separator">至</div>
+                <div class="date-group">
+                    <label>到:</label>
+                    <input type="text" id="end_year" placeholder="年" value="114">
+                    <span>年</span>
+                    <input type="text" id="end_month" placeholder="月" value="01">
+                    <span>月</span>
+                    <input type="text" id="end_day" placeholder="日" value="31">
+                    <span>日</span>
+                </div>
+                <div class="button-container">
+                    <button id="downloadPdfsBtn" class="btn">下載判決書PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-sections">
+            <div class="left-pane">
+                <h2>控制面板</h2>
+                <div class="input-group">
+                    <label for="folderPathInput">1. 指定 PDF 資料夾路徑 ：</label>
+                    <div class="path-input-container">
+                        <input type="text" id="folderPathInput" placeholder="點擊右側按鈕選擇資料夾..." value="D:\\judicial_pdfs">
+                        <button id="selectPathBtn" class="btn btn-small">選擇路徑</button>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="dialogInput">2. 輸入分析指令：</label>
+                    <textarea id="dialogInput" class="dialog-input" placeholder="請在此輸入您的問題或分析指令..."></textarea>
+                </div>
+                <div class="button-container2">
+                    <button id="loadDataBtn" class="btn">資料上傳</button>
+                    <button id="runAnalysisBtn" class="btn">執行分析</button>
+                </div>
+                <div id="status-box">狀態：閒置</div>
+            </div>
+            <div class="right-pane">
+                <h2>分析報告</h2>
+                <iframe id="reportPreview" class="report-preview" srcdoc="<p style='padding:20px; text-align:center; color:#666;'>報告將在此處顯示。</p>"></iframe>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+document.addEventListener('DOMContentLoaded', function() {
+    // --- 元素選擇 (新增 downloadPdfsBtn) ---
+    const selectPathBtn = document.getElementById('selectPathBtn');
+    const folderPathInput = document.getElementById('folderPathInput');
+    const loadDataBtn = document.getElementById('loadDataBtn');
+    const runAnalysisBtn = document.getElementById('runAnalysisBtn');
+    const downloadPdfsBtn = document.getElementById('downloadPdfsBtn');
+    const dialogInput = document.getElementById('dialogInput');
+    const statusBox = document.getElementById('status-box');
+    const reportPreview = document.getElementById('reportPreview');
+
+    // --- 新增: 日期輸入框元素 ---
+    const start_y = document.getElementById('start_year');
+    const start_m = document.getElementById('start_month');
+    const start_d = document.getElementById('start_day');
+    const end_y = document.getElementById('end_year');
+    const end_m = document.getElementById('end_month');
+    const end_d = document.getElementById('end_day');
+
+    // --- 新增：設定預設日期的邏輯 ---
+    function setDefaultDates() {
+        const today = new Date();
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(today.getDate() - 7);
+
+        // 轉換為民國年
+        const toROCYear = (gregorianYear) => gregorianYear - 1911;
+
+        // 格式化為兩位數字 (例如 01, 02)
+        const formatTwoDigits = (num) => num.toString().padStart(2, '0');
+
+        // 設定結束日期為今天
+        end_y.value = toROCYear(today.getFullYear());
+        end_m.value = formatTwoDigits(today.getMonth() + 1); // 月份從 0 開始
+        end_d.value = formatTwoDigits(today.getDate());
+
+        // 設定開始日期為七天前
+        start_y.value = toROCYear(sevenDaysAgo.getFullYear());
+        start_m.value = formatTwoDigits(sevenDaysAgo.getMonth() + 1);
+        start_d.value = formatTwoDigits(sevenDaysAgo.getDate());
+    }
+
+    setDefaultDates(); // 在 DOM 內容載入後立即呼叫此函數
+
+
+    let loadingPoller = null;
+    let analysisPoller = null;
+    let downloadPoller = null; // 新增 download Poller
+
+    selectPathBtn.addEventListener('click', async function() {
+        try {
+            const folder = await window.pywebview.api.select_folder();
+            if (folder) {
+                folderPathInput.value = folder;
+            }
+        } catch (e) {
+            console.error("選擇資料夾時發生錯誤:", e);
+            alert("無法呼叫原生 API。請確認您是在 pywebview 視窗中執行。");
+        }
+    });
+
+    function setButtonsDisabled(disabled) {
+        loadDataBtn.disabled = disabled;
+        runAnalysisBtn.disabled = disabled;
+        selectPathBtn.disabled = disabled;
+        downloadPdfsBtn.disabled = disabled; // 同時禁用新按鈕
+    }
+
+    // --- 修改: "下載判決書PDF" 按鈕邏輯，以包含日期 ---
+    downloadPdfsBtn.addEventListener('click', function() {
+        // 獲取日期值
+        const dates = {
+            start_year: start_y.value.trim(),
+            start_month: start_m.value.trim(),
+            start_day: start_d.value.trim(),
+            end_year: end_y.value.trim(),
+            end_month: end_m.value.trim(),
+            end_day: end_d.value.trim()
+        };
+
+        // 簡單驗證
+        for (const key in dates) {
+            if (!dates[key]) {
+                alert('所有日期欄位都必須填寫！');
+                return;
+            }
+        }
+
+        setButtonsDisabled(true);
+        statusBox.textContent = '正在啟動 PDF 下載任務...';
+        reportPreview.srcdoc = '';
+
+        // --- 修改 fetch，將日期作為 body 發送 ---
+        fetch('/start_download', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(dates)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                if (downloadPoller) clearInterval(downloadPoller);
+                downloadPoller = setInterval(pollDownloadStatus, 1000);
+            } else {
+                statusBox.textContent = `啟動失敗: ${data.message}`;
+                statusBox.style.color = '#dc3545';
+                setButtonsDisabled(false);
+            }
+        })
+        .catch(err => {
+            statusBox.textContent = '下載請求失敗: ' + err;
+            setButtonsDisabled(false);
+        });
+    });
+
+    function pollDownloadStatus() {
+        fetch('/download_status')
+        .then(res => res.json())
+        .then(data => {
+            statusBox.textContent = `[下載進度] ${data.message}`;
+            if (data.state === 'success' || data.state === 'error') {
+                statusBox.style.color = data.state === 'success' ? '#28a745' : '#dc3545';
+                clearInterval(downloadPoller);
+                setButtonsDisabled(false);
+            } else {
+                statusBox.style.color = '#ff9800'; // 橘色
+            }
+        });
+    }
+
+    loadDataBtn.addEventListener('click', function() {
+        const folderPath = folderPathInput.value;
+        if (!folderPath.trim()) { alert('請輸入或選擇一個資料夾路徑。'); return; }
+
+        setButtonsDisabled(true);
+        statusBox.textContent = '正在啟動資料上傳任務...';
+        reportPreview.srcdoc = ''; // 清空舊報告
+
+        fetch('/start_loading', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({folder_path: folderPath})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                if (loadingPoller) clearInterval(loadingPoller);
+                loadingPoller = setInterval(pollLoadingStatus, 1000);
+            } else {
+                statusBox.textContent = `啟動失敗: ${data.message}`;
+                statusBox.style.color = '#dc3545';
+                setButtonsDisabled(false);
+            }
+        })
+        .catch(err => {
+            statusBox.textContent = '上傳請求失敗: ' + err;
+            setButtonsDisabled(false);
+        });
+    });
+
+    function pollLoadingStatus() {
+        fetch('/loading_status')
+        .then(res => res.json())
+        .then(data => {
+            statusBox.textContent = `[上傳進度] ${data.message}`;
+            if (data.state === 'success' || data.state === 'error') {
+                statusBox.style.color = data.state === 'success' ? '#28a745' : '#dc3545';
+                clearInterval(loadingPoller);
+                setButtonsDisabled(false);
+            } else {
+                statusBox.style.color = '#007bff';
+            }
+        });
+    }
+
+    runAnalysisBtn.addEventListener('click', function() {
+        const userPrompt = dialogInput.value;
+        if (!userPrompt.trim()) { alert('請輸入分析指令才能執行分析。'); return; }
+
+        setButtonsDisabled(true);
+        statusBox.textContent = '分析請求已發送，啟動中...';
+        reportPreview.srcdoc = "<p style='padding:20px; text-align:center; color:#222;'>分析中，請稍候...</p>";
+
+        fetch('/start_analysis', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({user_prompt: userPrompt})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                statusBox.textContent = data.message;
+                if (analysisPoller) clearInterval(analysisPoller);
+                analysisPoller = setInterval(pollAnalysisStatus, 2000);
+            } else {
+                statusBox.textContent = `啟動失敗: ${data.message}`;
+                statusBox.style.color = '#dc3545';
+                setButtonsDisabled(false);
+            }
+        })
+        .catch(err => {
+            statusBox.textContent = '分析請求失敗: ' + err;
+            setButtonsDisabled(false);
+        });
+    });
+
+    function pollAnalysisStatus() {
+        fetch('/analysis_status')
+        .then(res => res.json())
+        .then(data => {
+            statusBox.textContent = `[分析進度] ${data.message}`;
+            if (data.state === 'success') {
+                statusBox.style.color = '#28a745';
+                clearInterval(analysisPoller);
+                setButtonsDisabled(false);
+                // --- 修改：直接使用 API 回傳的 HTML 內容 ---
+                if(data.report_html) {
+                    reportPreview.srcdoc = data.report_html;
+                } else {
+                    reportPreview.srcdoc = "<p>報告生成成功，但未收到內容。</p>";
+                }
+            } else if (data.state === 'error') {
+                statusBox.style.color = '#dc3545';
+                clearInterval(analysisPoller);
+                setButtonsDisabled(false);
+                reportPreview.srcdoc = `<div style='padding:20px; color:red;'><h2>分析失敗</h2><p>${data.message}</p></div>`;
+            } else {
+                statusBox.style.color = '#007bff';
+            }
+        });
+    }
+});
