@@ -173,60 +173,58 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    runAnalysisBtn.addEventListener('click', function() {
+    runAnalysisBtn.addEventListener('click', async function() {
         const userPrompt = dialogInput.value;
         if (!userPrompt.trim()) { alert('請輸入分析指令才能執行分析。'); return; }
 
         setButtonsDisabled(true);
-        statusBox.textContent = '分析請求已發送，啟動中...';
-        reportPreview.srcdoc = "<p style='padding:20px; text-align:center; color:#222;'>分析中，請稍候...</p>";
+        statusBox.textContent = '分析中... 請觀察下方報告區域...';
+        statusBox.style.color = '#007bff';
+        
+        // 初始化報告區域
+        reportPreview.srcdoc = `
+            <div style="padding:20px; font-family: sans-serif;">
+                <p style="color: #666; text-align:center;">正在連線到 Ollama 並搜尋知識庫...</p>
+            </div>
+        `;
 
-        fetch('/start_analysis', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({user_prompt: userPrompt})
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                statusBox.textContent = data.message;
-                if (analysisPoller) clearInterval(analysisPoller);
-                analysisPoller = setInterval(pollAnalysisStatus, 2000);
-            } else {
-                statusBox.textContent = `啟動失敗: ${data.message}`;
-                statusBox.style.color = '#dc3545';
-                setButtonsDisabled(false);
+        try {
+            const response = await fetch('/start_analysis', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user_prompt: userPrompt})
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.message || '伺服器錯誤');
             }
-        })
-        .catch(err => {
-            statusBox.textContent = '分析請求失敗: ' + err;
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullHtml = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                fullHtml += chunk;
+                
+                // 即時更新 iframe 內容
+                reportPreview.srcdoc = fullHtml;
+            }
+
+            statusBox.textContent = '分析完成！';
+            statusBox.style.color = '#28a745';
+        } catch (err) {
+            statusBox.textContent = '分析失敗: ' + err.message;
+            statusBox.style.color = '#dc3545';
+            reportPreview.srcdoc = `<div style='padding:20px; color:red;'><h2>分析出錯</h2><p>${err.message}</p></div>`;
+        } finally {
             setButtonsDisabled(false);
-        });
+        }
     });
 
-    function pollAnalysisStatus() {
-        fetch('/analysis_status')
-        .then(res => res.json())
-        .then(data => {
-            statusBox.textContent = `[分析進度] ${data.message}`;
-            if (data.state === 'success') {
-                statusBox.style.color = '#28a745';
-                clearInterval(analysisPoller);
-                setButtonsDisabled(false);
-                // --- 修改：直接使用 API 回傳的 HTML 內容 ---
-                if(data.report_html) {
-                    reportPreview.srcdoc = data.report_html;
-                } else {
-                    reportPreview.srcdoc = "<p>報告生成成功，但未收到內容。</p>";
-                }
-            } else if (data.state === 'error') {
-                statusBox.style.color = '#dc3545';
-                clearInterval(analysisPoller);
-                setButtonsDisabled(false);
-                reportPreview.srcdoc = `<div style='padding:20px; color:red;'><h2>分析失敗</h2><p>${data.message}</p></div>`;
-            } else {
-                statusBox.style.color = '#007bff';
-            }
-        });
-    }
+    // 刪除原本的 pollAnalysisStatus 函數，因為現在是用串流直接處理
 });

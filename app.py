@@ -130,22 +130,20 @@ def run_training_task(folder_path):
         training_status["state"] = "error"
         training_status["message"] = f"啟動訓練任務時發生錯誤: {e}"
 
-#處理 RAG 問答與分析作業
-def run_analysis_task(user_prompt):
-    global analysis_status
-    analysis_status = {"state": "analyzing", "message": "正在處理您的提問，請稍候..."}
+#處理 RAG 問答與分析引擎 (串流模式)
+def generate_rag_stream(user_prompt):
+    """
+    Generator 函數，逐步回傳 RAG 分析的 HTML 片段。
+    """
     try:
-        print(f"啟動 RAG 分析，User Prompt: {user_prompt}")
-        # 呼叫新的 RAG Agent
-        html_report = query_rag_system(user_prompt)
-
-        analysis_status["state"] = "success"
-        analysis_status["message"] = "分析完成"
-        # 將生成的 HTML 放進狀態中傳給前端
-        analysis_status["report_html"] = html_report
+        print(f"啟動 RAG 串流分析，User Prompt: {user_prompt}")
+        # 呼叫 query_rag_system (現在它是個 Generator)
+        for chunk in query_rag_system(user_prompt):
+            yield chunk
     except Exception as e:
-        analysis_status["state"] = "error"
-        analysis_status["message"] = f"分析過程發生錯誤: {e}"
+        yield f"<div style='color: red;'>串流中斷: {e}</div>"
+
+# 原本的 run_analysis_task 已不再由狀態輪詢驅動，改為直接 Streaming
 
 # --- Flask 路由 ---
 @app.route('/')
@@ -198,17 +196,15 @@ def get_training_status_api():
 
 @app.route('/start_analysis', methods=['POST'])
 def start_analysis_api():
-    if training_status["state"] == "loading" or analysis_status["state"] == "analyzing" or download_status["state"] == "downloading":
-        return jsonify({"status": "error", "message": "已有任務在運行中。"}), 409
-    
-    user_prompt = request.get_json().get('user_prompt')
+    """
+    不使用背景 Thread，改用 Flask Response 串流直接回傳內容。
+    """
+    data = request.get_json()
+    user_prompt = data.get('user_prompt')
     if not user_prompt: 
         return jsonify({"status": "error", "message": "請輸入提問或分析指令。"}), 400
         
-    thread = threading.Thread(target=run_analysis_task, args=(user_prompt,))
-    thread.daemon = True
-    thread.start()
-    return jsonify({"status": "success", "message": "分析任務已啟動"})
+    return Response(generate_rag_stream(user_prompt), mimetype='text/html')
 
 @app.route('/analysis_status')
 def get_analysis_status_api():
