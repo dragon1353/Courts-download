@@ -1,0 +1,26 @@
+
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="padding: 20px; border-radius: 8px; background-color: #f8f9fa; border-left: 5px solid #dc3545; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px;">
+            <h2 style="color: #dc3545; margin-top: 0; display: flex; align-items: center;">
+                <span style="font-size: 1.5em; margin-right: 10px;">⚠️</span>
+                地端 AI 預測結果：有罪
+            </h2>
+            <p style="font-size: 1.2em; margin: 10px 0;">神經網路信心指數 (Probability)：<strong>52.23%</strong></p>
+            <p style="color: #666; font-size: 0.9em;">(使用加速裝置運算：CUDA)</p>
+        </div>
+        
+        <h3>⚙️ 分析詳情：</h3>
+        <ul>
+            <li><strong>推論引擎：</strong>本地端 PyTorch Bi-LSTM 網路</li>
+            <li><strong>載入權重檔：</strong> best_model.pth</li>
+            <li><strong>您的自訂 Prompt：</strong> 123</li>
+        </ul>
+        
+        <div style="margin-top: 30px; padding: 10px; background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 5px;">
+            <h4 style="color: #856404; margin-top:0;">💡 地端訓練小知識</h4>
+            <p style="color: #856404; font-size: 0.9em; margin-bottom: 0;">
+                此次預測結果是 100% 由您的電腦獨立運算生成，<b>過程完全沒有連接網際網路，也沒有呼叫 Gemini API</b>。如果您覺得目前的準確率不夠高，只要利用爬蟲收集更多的判決書，並重新執行 <code>train_model.py</code>，這個預測系統就會越來越精準！
+            </p>
+        </div>
+    </div>
+    
