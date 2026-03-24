@@ -178,13 +178,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!userPrompt.trim()) { alert('請輸入分析指令才能執行分析。'); return; }
 
         setButtonsDisabled(true);
-        statusBox.textContent = '分析中... 請觀察下方報告區域...';
+        statusBox.textContent = '分析中... 正在載入知識庫與生成報告...';
         statusBox.style.color = '#007bff';
         
-        // 初始化報告區域
+        // 初始化報告區域 (loading 狀態)
         reportPreview.srcdoc = `
-            <div style="padding:20px; font-family: sans-serif;">
-                <p style="color: #666; text-align:center;">正在連線到 Ollama 並搜尋知識庫...</p>
+            <div style="padding:20px; font-family: sans-serif; text-align:center;">
+                <p style="color: #666;">⏳ 正在連線到 Ollama 並搜尋知識庫，請稍候...</p>
             </div>
         `;
 
@@ -202,17 +202,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            let fullHtml = "";
+            let isFirstChunk = true;
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 
                 const chunk = decoder.decode(value, { stream: true });
-                fullHtml += chunk;
                 
-                // 即時更新 iframe 內容
-                reportPreview.srcdoc = fullHtml;
+                if (isFirstChunk) {
+                    // 第一个片段包含完整的 HTML 骨架和 id="streaming-content"
+                    reportPreview.srcdoc = chunk;
+                    isFirstChunk = false;
+                } else {
+                    // 之後的片段直接注入到 iframe 內部的容器中，避免重刷
+                    const iframeDoc = reportPreview.contentDocument || reportPreview.contentWindow.document;
+                    const container = iframeDoc.getElementById('streaming-content');
+                    if (container) {
+                        // 建立一個暫時的 div 來解析 chunk (防止 HTML 標籤被切斷導致顯示異常)
+                        container.innerHTML += chunk;
+                        
+                        // 自動捲動到最下方
+                        window.scrollTo(0, document.body.scrollHeight);
+                        // 如果是在 iframe 內部捲動
+                        reportPreview.contentWindow.scrollTo(0, iframeDoc.body.scrollHeight);
+                    }
+                }
             }
 
             statusBox.textContent = '分析完成！';
@@ -220,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (err) {
             statusBox.textContent = '分析失敗: ' + err.message;
             statusBox.style.color = '#dc3545';
-            reportPreview.srcdoc = `<div style='padding:20px; color:red;'><h2>分析出錯</h2><p>${err.message}</p></div>`;
+            reportPreview.srcdoc = `<div style='padding:20px; color:red; font-family:sans-serif;'><h2>⚠️ 分析出錯</h2><p>${err.message}</p></div>`;
         } finally {
             setButtonsDisabled(false);
         }

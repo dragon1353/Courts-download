@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <title>PDF 分析工具 (桌面版)</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
     <div class="container">
         <h1>PDF 分析工具</h1>
@@ -42,33 +44,41 @@
                 <h2>全庫知識問答 (RAG)</h2>
                 <div class="input-group">
                     <label for="dialogInput">輸入您的法律問題：</label>
-                    <textarea id="dialogInput" class="dialog-input" placeholder="例如：以目前的資料庫來看，竊盜罪通常判多長的刑期？" style="height: 100px; font-size: 1.1em;"></textarea>
+                    <textarea id="dialogInput" class="dialog-input" placeholder="例如：以目前的資料庫來看，竊盜罪通常判多長的刑期？"
+                        style="height: 100px; font-size: 1.1em;"></textarea>
                 </div>
                 <div class="button-container">
-                    <button id="runAnalysisBtn" class="btn" style="background-color: #28a745; font-weight: bold; width: 100%;">送出問題 (智能檢索分析)</button>
+                    <button id="runAnalysisBtn" class="btn"
+                        style="background-color: #28a745; font-weight: bold; width: 100%;">送出問題 (智能檢索分析)</button>
                 </div>
 
                 <hr style="border: 0; border-top: 1px solid #ddd; margin: 25px 0;">
 
-                <h3 style="color: #666; font-size: 1em; margin-bottom: 10px;">🔧 模型煉丹爐 (本地訓練設定)</h3>
+                <h3 style="color: #666; font-size: 1em; margin-bottom: 10px;">🔧 模型訓練 (本地訓練設定)</h3>
                 <div class="input-group">
-                    <label for="folderPathInput" style="font-size: 0.9em; color: #555;">(可選) 指定 PDF 資料夾，系統將據此重新訓練 PyTorch 底層判斷依據：</label>
+                    <label for="folderPathInput" style="font-size: 0.9em; color: #555;">(可選) 指定 PDF 資料夾，系統將據此重新訓練
+                        PyTorch 底層判斷依據：</label>
                     <div class="path-input-container">
                         <input type="text" id="folderPathInput" placeholder="點擊右側按鈕選擇資料夾..." value="D:\\judicial_pdfs">
                         <button id="selectPathBtn" class="btn btn-small">選擇</button>
                     </div>
                 </div>
                 <div class="button-container">
-                    <button id="loadDataBtn" class="btn" style="width: 100%; background-color: #6c757d;">啟動在地標註與神經網路訓練</button>
+                    <button id="loadDataBtn" class="btn"
+                        style="width: 100%; background-color: #6c757d;">啟動在地標註與神經網路訓練</button>
                 </div>
-                <div id="status-box" style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff;">狀態：閒置</div>
+                <div id="status-box"
+                    style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff;">
+                    狀態：閒置</div>
             </div>
             <div class="right-pane">
                 <h2>分析報告</h2>
-                <iframe id="reportPreview" class="report-preview" srcdoc="<p style='padding:20px; text-align:center; color:#666;'>報告將在此處顯示。</p>"></iframe>
+                <iframe id="reportPreview" class="report-preview"
+                    srcdoc="<p style='padding:20px; text-align:center; color:#666;'>報告將在此處顯示。</p>"></iframe>
             </div>
         </div>
     </div>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
+
 </html>

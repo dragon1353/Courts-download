@@ -121,7 +121,7 @@ def run_training_task(folder_path):
         
         if process_train.returncode == 0:
             training_status["state"] = "success"
-            training_status["message"] = "煉丹完成！已成功儲存最佳模型 best_model.pth。"
+            training_status["message"] = "訓練完成！已成功儲存最佳模型 best_model.pth。"
         else:
              training_status["state"] = "error"
              training_status["message"] = f"神經網路訓練階段發生錯誤，返回碼 {process_train.returncode}。"

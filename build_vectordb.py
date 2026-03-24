@@ -3,12 +3,40 @@ import sys
 import glob
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
-
-# 確保載入 config
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import torch
+from langchain_core.embeddings import Embeddings
+import torch
+from langchain_core.embeddings import Embeddings
 import config
+from models import Vocab, LegalAutoencoder
+
+class LocalLegalEmbedding(Embeddings):
+    def __init__(self):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model_path = os.path.join(config.BASE_DIR, "dataset", "best_model.pth")
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"找不到模型檔案: {model_path}，請先執行訓練。")
+        
+        checkpoint = torch.load(model_path, map_location=self.device)
+        # 使用新的 Vocab 初始化方式
+        self.vocab = Vocab(checkpoint['vocab'], checkpoint['inv_vocab'])
+        self.model = LegalAutoencoder(len(self.vocab.vocab))
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.model.to(self.device)
+        self.model.eval()
+
+    def embed_documents(self, texts):
+        embeddings = []
+        for text in texts:
+            embeddings.append(self.embed_query(text))
+        return embeddings
+
+    def embed_query(self, text):
+        indices = self.vocab.encode(text, config.TRAIN_MAX_SEQ_LEN)
+        input_tensor = torch.tensor([indices], dtype=torch.long).to(self.device)
+        with torch.no_grad():
+            _, latent = self.model(input_tensor)
+        return latent.cpu().numpy()[0].tolist()
 
 def build_vector_database():
     pdf_dir = config.PDF_SAVE_PATH
@@ -39,13 +67,20 @@ def build_vector_database():
     splits = text_splitter.split_documents(docs)
     
     print(f"共切分為 {len(splits)} 個資料段落。")
-    print("\n正在載入 Embedding 向量化模型 (初次執行需要下載)...")
+    print("\n正在載入『地端專屬法律特徵模型』(best_model.pth)...")
     
-    # 選擇適合繁體中文的輕量級開源模型 (intfloat/multilingual-e5-small)
-    embeddings = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-small")
+    print("\n正在載入『地端專屬法律特徵模型』作為 Embedding 引擎...")
+    embeddings = LocalLegalEmbedding()
     
-    print("\n正在建立本地端 ChromaDB 向量知識庫...")
-    # 若資料庫已存在，這會直接寫入/覆蓋現有記憶
+    print("\n正在建立本地端 ChromaDB 向量知識庫 (使用專屬特徵)...")
+    from langchain_community.vectorstores import Chroma
+    
+    # 清除舊的資料庫以確保索引空間一致 (不一致會導致搜尋異常)
+    if os.path.exists(db_dir):
+        import shutil
+        shutil.rmtree(db_dir)
+        print(f"已清理舊有資料庫以進行全文重新索引。")
+
     vectorstore = Chroma.from_documents(
         documents=splits, 
         embedding=embeddings, 
