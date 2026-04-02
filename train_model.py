@@ -45,9 +45,12 @@ def train_unsupervised():
     texts = df['TextContent'].fillna("").tolist()
     
     # 2. 建立辭典與 Dataset
-    vocab = Vocab(texts)
-    dataset = UnsupervisedLegalDataset(texts, vocab)
-    dataloader = DataLoader(dataset, batch_size=config.TRAIN_BATCH_SIZE, shuffle=True)
+    vocab = Vocab(texts, max_vocab=config.TRAIN_MAX_VOCAB_SIZE)
+    dataset = UnsupervisedLegalDataset(texts, vocab, max_len=config.TRAIN_MAX_SEQ_LEN)
+    
+    # 根據 config 決定 Batch Size，若為 0 則一次讀取所有
+    batch_size = config.TRAIN_BATCH_SIZE if config.TRAIN_BATCH_SIZE > 0 else len(dataset)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     
     # 3. 初始化模型與優化器
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -55,7 +58,7 @@ def train_unsupervised():
     
     model = LegalAutoencoder(len(vocab.vocab)).to(device)
     criterion = nn.CrossEntropyLoss(ignore_index=0) # 忽略 Padding
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=config.TRAIN_LEARNING_RATE)
     
     # 4. 訓練迴圈
     epochs = config.TRAIN_EPOCHS

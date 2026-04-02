@@ -40,16 +40,19 @@ class LegalAutoencoder(nn.Module):
         self.output_layer = nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, x):
-        # 1. Embedding
+        """
+        前向傳播：將輸入序列壓縮為潛在特徵 (Latent Feature)，再試圖還原。
+        """
+        # 1. Embedding 層
         embedded = self.embedding(x)
         
-        # 2. Encoding
+        # 2. Encoder: 透過雙向 LSTM 提取特徵
         _, (hn, _) = self.encoder(embedded)
-        # 合併雙向 LSTM 的最後一個 hidden state
+        # 合併雙向最後一個 Hidden State 做為此段文本的特徵代表
         latent = torch.cat((hn[-2,:,:], hn[-1,:,:]), dim=1)
         latent = torch.relu(self.latent_layer(latent))
         
-        # 3. Decoding (還原序列)
+        # 3. Decoder: 展開並還原序列 (用於訓練計算 Loss)
         seq_len = x.size(1)
         z = latent.unsqueeze(1).repeat(1, seq_len, 1)
         

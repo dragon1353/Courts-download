@@ -29,12 +29,25 @@ def extract_crime_info(text):
     sentence_months = 0
     penalty = 0
     
-    # 1. 提取罪名 (通常在主文出現：犯...罪)
-    # 取主文前段
-    main_text = text[:2000] 
-    crime_match = re.search(r"犯(.*?罪)", main_text)
-    if crime_match:
-        crime_type = crime_match.group(1)
+    # 1. 提取案由 (通常在開頭：因...案件)
+    # 這是比較通用的做法，不論是民事或刑事通常都有案由
+    main_text = text[:3000]
+    
+    # 案由解析 (因...案件 或 因...而...案件)
+    case_reason_match = re.search(r"因(.*?)(案件|案件|罪)", main_text)
+    if case_reason_match:
+        crime_type = case_reason_match.group(1).split("，")[0].strip() # 避免抓太長
+    else:
+        # 如果沒抓到案由，再回退到原本的「犯...罪」
+        crime_match = re.search(r"犯(.*?罪)", main_text)
+        if crime_match:
+            crime_type = crime_match.group(1)
+        else:
+            crime_type = "未知"
+            
+    # 二次清理：如果是「如附表...」，我們還是保留，但至少這不是硬編碼
+    if len(crime_type) > 30: # 如果太長可能解析錯誤，抓前 20 字
+        crime_type = crime_type[:20] + "..."
     
     # 2. 提取刑期 (有期徒刑...年...月)
     year_match = re.search(r"處有期徒刑(?:(\d+)年)?(?:(\d+)月)?", main_text)
@@ -88,7 +101,7 @@ def process_all_judgments():
             "CrimeType": crime,
             "SentenceMonths": months,
             "Penalty": money,
-            "TextContent": clean_text[:500] # 僅儲存前 500 字摘要，節省空間
+            "TextContent": clean_text  # 無上限儲存完整 PDF 內文
         })
         
         if (i+1) % 10 == 0:

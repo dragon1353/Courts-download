@@ -210,21 +210,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const chunk = decoder.decode(value, { stream: true });
                 
+                // 1. 同步更新外部狀態框的文字內容 (Progress Heartbeat)
+                const progressMatch = chunk.match(/<!-- PROGRESS: (.*?) -->/);
+                if (progressMatch) {
+                    statusBox.textContent = `[分析進度] ${progressMatch[1]}`;
+                }
+                
                 if (isFirstChunk) {
-                    // 第一个片段包含完整的 HTML 骨架和 id="streaming-content"
+                    // 第一個片段包含完整骨架
                     reportPreview.srcdoc = chunk;
                     isFirstChunk = false;
                 } else {
-                    // 之後的片段直接注入到 iframe 內部的容器中，避免重刷
                     const iframeDoc = reportPreview.contentDocument || reportPreview.contentWindow.document;
-                    const container = iframeDoc.getElementById('streaming-content');
-                    if (container) {
-                        // 建立一個暫時的 div 來解析 chunk (防止 HTML 標籤被切斷導致顯示異常)
-                        container.innerHTML += chunk;
+                    // 目標容器：若階段 1-4 則先貼到 body，階段 5 則貼到 streaming-content
+                    let target = iframeDoc.getElementById('streaming-content') || iframeDoc.body;
+                    
+                    if (target) {
+                        // [核心修復] 使用 Range 來解析 HTML，這會強迫瀏覽器執行裡面的 <script>
+                        const range = iframeDoc.createRange();
+                        range.setStart(target, target.childNodes.length);
+                        const fragment = range.createContextualFragment(chunk);
+                        target.appendChild(fragment);
                         
-                        // 自動捲動到最下方
-                        window.scrollTo(0, document.body.scrollHeight);
-                        // 如果是在 iframe 內部捲動
+                        // 自動捲動
                         reportPreview.contentWindow.scrollTo(0, iframeDoc.body.scrollHeight);
                     }
                 }

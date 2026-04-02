@@ -5,8 +5,6 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import torch
 from langchain_core.embeddings import Embeddings
-import torch
-from langchain_core.embeddings import Embeddings
 import config
 from models import Vocab, LegalAutoencoder
 
