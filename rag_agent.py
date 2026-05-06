@@ -231,7 +231,7 @@ def query_rag_system(user_prompt):
     <div id="progress-indicator" style="padding:20px; background-color:#f8f9fa; border-radius:12px; margin-bottom:25px; border:1px solid #dee2e6; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
         <p style="margin:0 0 15px 0; border-bottom:2px solid #eee; padding-bottom:10px; font-size:1.1em;">📋 <b>地端 RAG 執行軌跡 (AI 優先模式)</b></p>
         <div id="step-1" class="step-active pulse">● 階段 1: 正在精準解析提問意圖與法律關鍵字...</div>
-        <div id="step-2" class="step-pending">○ 階段 2: 正在生成全量深度文字矩陣 (N-gram 1-5)...</div>
+        <div id="step-2" class="step-pending">○ 階段 2: 正在生成全量深度文字矩陣 (N-gram 1-8)...</div>
         <div id="step-3" class="step-pending">○ 階段 3: 正在進行全庫相似度掃描與候選召回...</div>
         <div id="step-4" class="step-pending">○ 階段 4: 正在進行本地模型語意重排 (Reranking)...</div>
         <div id="step-5" class="step-pending">○ 階段 5: 正在進行 Llama 總結分析與法律建議產出...</div>
@@ -289,13 +289,16 @@ def query_rag_system(user_prompt):
             # [核心修復] 僅使用 AI 提取的專業關鍵字進行 TF-IDF 檢索，撇除使用者指令雜訊
             query_tokenized = tokenize_chinese(ai_search_keywords)
             
+            # 動態調整 max_df：防止在候選文件僅有 1 份時出現 max_df < min_df 的錯誤
+            safe_max_df = 0.9 if len(all_texts_tokenized) > 1 else 1.0
+
             # --- [全字元極致模式] 字元長度擴充為 (1, 8) ---
             vectorizer = TfidfVectorizer(
                 max_features=40000, 
                 token_pattern=r"(?u)\b\w+\b", 
                 ngram_range=(1, 8), 
                 min_df=1, 
-                max_df=0.9
+                max_df=safe_max_df
             )
             
             # 啟動步驟 2
@@ -441,9 +444,9 @@ def query_rag_system(user_prompt):
 - 請將上述案例與您的法律知識（民事、刑事、家事、性侵防治法等）對齊，給予具體的定罪建議或行動方針。
 
 【回覆準則】：
-- **必須明確指出檔名**（如：XXX.pdf）以便使用者核對。
-- **格式規範 (HTML ONLY)**：**絕對禁止** 使用 Markdown。
-  - 標題用 <p><strong>文字</strong></p>，內文用 <p>文字</p>。
+1. **明確引用**：請務必明確指出您是參照哪一個檔案（如：XXX.pdf）進行的比對分析。
+2. **純文字格式**：請直接以文字輸出，**絕對禁止** 使用任何 HTML 標籤（如 <p>, <strong>, <ul> 等）或 Markdown 語法（如 #, *, >）。
+3. **分段規範**：段落之間請「空一行」（使用一個換行符號），確保閱讀清晰。
 """
 
         # 先 Yield 報告的開頭與來源部分
@@ -461,7 +464,7 @@ def query_rag_system(user_prompt):
                 {source_documents_html}
             </div>
             <h3 style="color: #444; border-bottom: 2px solid #ddd; padding-bottom: 5px; margin-top: 30px;">💡 總結分析與建議 (Ollama: {config.OLLAMA_MODEL_NAME})</h3>
-            <div id="streaming-content" style="padding: 20px; border-radius: 8px; background-color: #ffffff; border: 1px solid #e0e0e0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <div id="streaming-content" style="padding: 20px; border-radius: 8px; background-color: #ffffff; border: 1px solid #e0e0e0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); white-space: pre-wrap;">
         '''
         yield header_html
 

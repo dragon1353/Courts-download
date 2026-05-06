@@ -10,7 +10,7 @@ WINDOW_HEIGHT = 900
 # --- 司法院查詢與爬蟲設定 ---
 JUDICIAL_TARGET_URL = "https://judgment.judicial.gov.tw/FJUD/Default_AD.aspx"
 PDF_SAVE_PATH = r"D:\judicial_pdfs"
-MAX_DOWNLOADS = 400
+MAX_DOWNLOADS = 1000
 
 # --- 內部路徑設定 ---
 BASE_DIR = os.path.dirname(__file__)
@@ -28,8 +28,8 @@ OLLAMA_MODEL_NAME = "llama3.1:8b"
 
 # --- PyTorch 模型訓練參數 (非監督式特徵學習) ---
 TRAIN_MAX_VOCAB_SIZE = 10000
-TRAIN_MAX_SEQ_LEN = 2048  # 建議不超過 2048 以免長序列導致顯存溢出
-TRAIN_BATCH_SIZE = 128  # 經測試，16GB 顯存可穩定支援到 128，推薦以此值平衡效能與穩定性
+TRAIN_MAX_SEQ_LEN = 1500  # 建議不超過 1份2048字 以免長序列導致顯存溢出
+TRAIN_BATCH_SIZE = 128  # 經測試，16GB 顯存可穩定支援到 1次128份數，推薦以此值平衡效能與穩定性
 TRAIN_EPOCHS = 50
 TRAIN_LEARNING_RATE = 1e-3
 
@@ -44,7 +44,7 @@ NOT_GUILTY_KEYWORDS = [
 # --- RAG 與 語意檢索參數 (動態門檻模式) ---
 RAG_SIMILARITY_THRESHOLD = 0.18   # 最低相關性門檻 (高於此值才錄用)
 RAG_MAX_CONTEXT_CHARS = 100000    # 大幅提升以支援無上限模式
-RAG_MAX_DOC_COUNT = 15            # 提高最大參考件數
+RAG_MAX_DOC_COUNT = 50            # 提高最大參考件數
 
 # 法律通用罪名關鍵字 (用於精準過濾)
 LEGAL_CRIME_WORDS = [
